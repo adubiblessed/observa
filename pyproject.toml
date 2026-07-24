@@ -1,0 +1,42 @@
+[project]
+name = "observa"
+version = "0.1.0"
+description = "Observability platform"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic>=2.0",
+    "pydantic-settings",
+    "sqlalchemy>=2.0",
+    "alembic",
+    "redis",
+    "duckdb",
+    "structlog",
+    "httpx",
+]
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "pyright",
+    "pytest",
+    "pre-commit",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra -q --strict-markers"
