@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from app.config.settings import settings
+from .config.settings import settings
+from .server.api import router
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -10,6 +11,8 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health():
         return {"status": "ok"}
+
+    app.include_router(router)
 
     return app
 
