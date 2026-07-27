@@ -1,6 +1,6 @@
 from fastapi import APIRouter 
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 
 @router.get(
