@@ -21,3 +21,13 @@ class RegisterResponse(BaseModel):
     email: EmailStr
     created_at: datetime
 
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+
+class LoginResponse(BaseModel):
+    id: UUID
+    email: EmailStr
+    last_login_at: datetime | None

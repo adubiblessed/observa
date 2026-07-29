@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 
-
-from fastapi import APIRouter, Depends, HTTPException, Request
+from datetime import UTC, datetime
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -76,3 +77,62 @@ async def register(
         email=user.email,
         created_at=user.created_at,
     )
+
+
+@router.post(
+    "/login",
+    response_model=schema.LoginResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def login(
+    payload: schema.LoginRequest,
+    session: AsyncSession = Depends(get_session),
+) -> schema.LoginResponse:
+    result = await session.execute(
+        select(User).where(
+            User.email == payload.email,
+        )
+    )
+
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    password_valid = _verify_password(
+        payload.password,
+        user.password_hash,
+    )
+
+    if not password_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    if not user.can_authenticate:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    user.last_login_at = datetime.now(UTC)
+
+    await session.commit()
+    await session.refresh(user)
+
+    return schema.LoginResponse(
+        id=user.id,
+        email=user.email,
+        last_login_at=user.last_login_at,
+    )
+
