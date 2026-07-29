@@ -13,7 +13,7 @@ class RegisterRequest(BaseModel):
 	first_name: str 
 	last_name: str 
 	country: Optional[str] = None
-    date_of_birth: date | None
+    date_of_birth: date = None
 	accept_tos: bool = False
 
 

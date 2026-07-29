@@ -1,3 +1,4 @@
+
 """Lifespan context shared by app + workers.
 
 `lifespan` is the FastAPI lifespan callable; `worker_lifespan` is a
@@ -11,17 +12,22 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 import structlog
 
-from observa.config.settings import BaseAppSettings
 from observa.config.settings import BaseAppSettings, DatabaseBackend
 
 from .shutdown import on_shutdown
 from .startup import on_startup
 
 log = structlog.get_logger(__name__)
+
 
 def _build_engine(settings: BaseAppSettings) -> AsyncEngine | None:
     try:
@@ -47,12 +53,24 @@ def _build_engine(settings: BaseAppSettings) -> AsyncEngine | None:
         return None
 
 
+def _build_session_factory(
+    engine: AsyncEngine,
+) -> async_sessionmaker[AsyncSession]:
+    return async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
+
 @asynccontextmanager
 async def worker_lifespan(
     settings: BaseAppSettings,
 ) -> AsyncIterator[AsyncEngine | None]:
     engine = _build_engine(settings)
+
     await on_startup(settings, engine)
+
     try:
         yield engine
     finally:
@@ -64,11 +82,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: BaseAppSettings = app.state.settings
     engine = _build_engine(settings)
 
+    app.state.engine = engine
+
+    if engine is not None:
+        app.state.session_factory = _build_session_factory(engine)
+    else:
+        app.state.session_factory = None
+
     await on_startup(settings, engine)
 
     try:
         yield
     finally:
         await on_shutdown(engine)
-        
-    # return _run()
