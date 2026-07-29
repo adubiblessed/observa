@@ -1,29 +1,18 @@
-#This file is responsible for the user account it is here that user account details are linked to, e.g api keys, organisations, payment if neccesaary, and projects 
+
+#This file is responsible for the user account it is here that user account details are linked to, e.g api keys, organisations, payment if neccesaary, and projects
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+from uuid import UUID
+
+from sqlalchemy import ForeignKey, Uuid
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from observa.common.model.base import BaseModel
 
-from uuid import UUID
-
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    ForeignKey,
-    Integer,
-    Interval,
-    String,
-    Text,
-    Uuid,
-)
-from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
-from typing import TYPE_CHECKING
-
-
-#prevent circular imports
-
-from observa.server.model.user import User
-
-
-
+if TYPE_CHECKING:
+    from observa.server.model.user import User
 
 
 class Account(BaseModel):
@@ -31,16 +20,14 @@ class Account(BaseModel):
 
     user_id: Mapped[UUID | None] = mapped_column(
         Uuid,
-        ForeignKey("users.id", ondelete="set null"),
+        ForeignKey("users.id", ondelete="SET NULL"),
         unique=True,
         nullable=True,
     )
 
-    @declared_attr
-    def user(cls) -> Mapped[User | None]:
-        return relationship(
-            User,
-            lazy="raise",
-            back_populates="account",
-            foreign_keys="[Account.user.id]",
-        )
+    user: Mapped[User | None] = relationship(
+        "User",
+        back_populates="account",
+        lazy="raise",
+    )
+
