@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+
 from datetime import date, datetime
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import (
     TIMESTAMP,
@@ -14,12 +16,14 @@ from sqlalchemy import (
     Text,
     and_,
     func,
+    Uuid,
+    ForeignKey,
 )
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import Index
 
-from observa.common.model.base import BaseModel
+from observa.common.model.base import BaseModel, UTCDateTime
 
 
 class User(BaseModel):
@@ -139,6 +143,11 @@ class User(BaseModel):
         lazy="raise",
     )
 
+    auth_sessions: Mapped[list["AuthSession"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
     @property
     def full_name(self) -> str | None:
         parts = [p for p in (self.first_name, self.last_name) if p]
@@ -159,3 +168,31 @@ class User(BaseModel):
     @property
     def signup_attribution(self) -> dict[str, Any]:
         return self.meta.get("signup", {})
+
+
+class AuthSession(BaseModel):
+    __tablename__ = "auth_sessions"
+
+    user_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey(
+            "users.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    expires_at: Mapped[datetime] = mapped_column(
+        UTCDateTime,
+        nullable=False,
+    )
+
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        UTCDateTime,
+        nullable=True,
+    )
+
+    user: Mapped["User"] = relationship(
+        back_populates="auth_sessions",
+    )
