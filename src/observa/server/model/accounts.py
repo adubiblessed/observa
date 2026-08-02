@@ -31,3 +31,11 @@ class Account(BaseModel):
         lazy="raise",
     )
 
+    teams: Mapped[list["Team"]] = relationship(
+        back_populates="account",
+    )
+
+    team_memberships: Mapped[list["TeamMember"]] = relationship(
+        back_populates="account",
+        cascade="all, delete-orphan",
+    )
