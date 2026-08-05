@@ -65,7 +65,14 @@ class ProjectIngestionKey(BaseModel):
         index=True,
     )
 
-    label: Mapped[str | None] = mapped_column(
+    created_by_account_id: Mapped[UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    name: Mapped[str | None] = mapped_column(
         String(PROJECT_KEY_LABEL_MAX_LENGTH),
         nullable=True,
     )
@@ -117,6 +124,21 @@ class ProjectIngestionKey(BaseModel):
 
     project: Mapped["Project"] = relationship(
         back_populates="project_ingestion_keys",
+    )
+
+    last_used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    expired_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),    
+        nullable=True,
+    )
+
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
 
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
 from enum import IntEnum
+from tokenize import String
 from uuid import UUID
 
 from sqlalchemy import (
@@ -11,7 +13,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from observa.common.model.base import BaseModel
+from observa.common.model.base import BaseModel, UTCDateTime, utc_now
 
 
 class TeamMemberRole(IntEnum):
@@ -49,6 +51,16 @@ class TeamMember(BaseModel):
         nullable=False,
     )
 
+    joined_at: Mapped[datetime] = mapped_column(
+        UTCDateTime, nullable=False, default=utc_now, index=True
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="active",
+    )
+
     team: Mapped["Team"] = relationship(
         back_populates="members",
     )
@@ -56,3 +68,4 @@ class TeamMember(BaseModel):
     account: Mapped["Account"] = relationship(
         back_populates="team_memberships",
     )
+
