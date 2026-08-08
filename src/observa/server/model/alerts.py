@@ -17,6 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from observa.common.model.base import BaseModel
+from observa.server.model.project import Project
 
 
 class AlertCondition(str, enum.Enum):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import IntEnum
-from tokenize import String
+# from tokenize import String
 from uuid import UUID
 
 from sqlalchemy import (
@@ -10,11 +10,13 @@ from sqlalchemy import (
     Integer,
     UniqueConstraint,
     Uuid,
+    String,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from observa.common.model.base import BaseModel, UTCDateTime, utc_now
-
+from observa.server.model.accounts import Account
+from observa.server.model.team import Team
 
 class TeamMemberRole(IntEnum):
     OWNER = 0

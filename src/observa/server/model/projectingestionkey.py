@@ -3,12 +3,12 @@ from __future__ import annotations
 import enum
 import re
 import secrets
+from uuid import UUID
 from datetime import datetime
 from typing import Any
-from urllib.parse import urlparse
+
 
 from sqlalchemy import (
-    Boolean,
     DateTime,
     ForeignKey,
     Integer,
@@ -19,6 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from observa.common.model.base import BaseModel
+from observa.server.model.project import Project
 
 PROJECT_KEY_MAX_LENGTH = 32
 PROJECT_KEY_LABEL_MAX_LENGTH = 64
@@ -186,7 +187,7 @@ class ProjectIngestionKey(BaseModel):
 
     def get_audit_log_data(self) -> dict[str, Any]:
         return {
-            "label": self.label,
+            "label": self.name,
             "public_key": self.public_key,
             "roles": self.roles,
             "status": self.status,

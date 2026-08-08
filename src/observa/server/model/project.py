@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 from uuid import UUID
+from typing import Any
+
 
 from sqlalchemy import (
     Boolean,
@@ -13,9 +15,10 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from observa.common.model.base import BaseModel
+from observa.server.model.team import Team
 
 
 PROJECT_SLUG_MAX_LENGTH = 100
@@ -76,14 +79,14 @@ class Project(BaseModel):
     flags: Mapped[int] = mapped_column(Integer, default=ProjectFlags.DEFAULT)
     platform: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
-    created_by_id: Mapped[UUID | None] = mapped_column(
+    account_id: Mapped[UUID] = mapped_column(
         Uuid,
-        ForeignKey("accounts.id", ondelete="SET NULL"),
-        nullable=True,
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
     )
     team_id: Mapped[UUID | None] = mapped_column(
         Uuid,
-        ForeignKey("team.id", ondelete="SET NULL"),
+        ForeignKey("teams.id", ondelete="SET NULL"),
         nullable=True,
     )
     team: Mapped["Team | None"] = relationship(
@@ -99,7 +102,8 @@ class Project(BaseModel):
     def set_flag(self, flag: int, value: bool) -> None:
         self.flags = (self.flags | flag) if value else (self.flags & ~flag)
 
-    def get_audit_log_data(self) -> dict:
+    
+    def get_audit_log_data(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "slug": self.slug,
