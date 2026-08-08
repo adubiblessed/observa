@@ -15,6 +15,7 @@ from sqlalchemy import (
     String,
     Uuid,
     UniqueConstraint,
+    JSON,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -112,10 +113,7 @@ class ProjectIngestionKey(BaseModel):
     )
 
     #added this field for future usecase incase there is need to store user cudtom data using the dict field
-    data: Mapped[dict[str, Any]] = mapped_column(
-        default=dict,
-        nullable=False,
-    )
+    data: Mapped[dict[str, Any]] = mapped_column( JSON, nullable=False, default=dict, )
 
     use_case: Mapped[ProjectKeyUseCase] = mapped_column(
         String(32),

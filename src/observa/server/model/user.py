@@ -24,7 +24,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import Index
 
 from observa.common.model.base import BaseModel, UTCDateTime
-from observa.server.model.account import Account
+from observa.server.model.accounts import Account
 
 
 class User(BaseModel):

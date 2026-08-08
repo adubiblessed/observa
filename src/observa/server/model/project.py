@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 from typing import Any
+from typing import TYPE_CHECKING
 
 
 from sqlalchemy import (
@@ -19,6 +20,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from observa.common.model.base import BaseModel
 from observa.server.model.team import Team
+
+
+if TYPE_CHECKING:
+    from observa.server.model.alerts import Alert
 
 
 PROJECT_SLUG_MAX_LENGTH = 100
@@ -91,6 +96,11 @@ class Project(BaseModel):
     )
     team: Mapped["Team | None"] = relationship(
        back_populates="projects",
+    )
+
+    project: Mapped["Alert"] = relationship(
+        "Alert",
+        back_populates="projects",
     )
     
     def __str__(self) -> str:
