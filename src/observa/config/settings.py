@@ -29,7 +29,7 @@ class DatabaseBackend(StrEnum):
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-DATABASE_DIR = BASE_DIR / "storage" / "database"
+DATABASE_DIR = BASE_DIR / "local_storage" / "database"
 DATABASE_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -71,7 +71,7 @@ class BaseAppSettings(BaseSettings):
     REDIS_URL: str | None = None
 
     # Storage
-    DUCKDB_PATH: str = "storage/observa.db"
+    DUCKDB_PATH: str = "local_storage/observa.db"
 
     # SQLite
     SQLITE_PATH: str = str(DATABASE_DIR / "observa.sqlite3")

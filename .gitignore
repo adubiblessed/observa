@@ -14,7 +14,7 @@ venv/
 !.env.example
 
 # runtime data
-storage/
+local_storage/
 
 # editor / OS
 .DS_Store
