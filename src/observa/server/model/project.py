@@ -24,6 +24,7 @@ from observa.server.model.team import Team
 
 if TYPE_CHECKING:
     from observa.server.model.alerts import Alert
+    from observa.server.model.projectingestionkey import ProjectIngestionKey
 
 
 PROJECT_SLUG_MAX_LENGTH = 100
@@ -84,10 +85,10 @@ class Project(BaseModel):
     flags: Mapped[int] = mapped_column(Integer, default=ProjectFlags.DEFAULT)
     platform: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
-    account_id: Mapped[UUID] = mapped_column(
+    account_id: Mapped[UUID | None] = mapped_column(
         Uuid,
         ForeignKey("accounts.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
     team_id: Mapped[UUID | None] = mapped_column(
         Uuid,
@@ -98,9 +99,15 @@ class Project(BaseModel):
        back_populates="projects",
     )
 
-    project: Mapped["Alert"] = relationship(
+    alerts: Mapped[list[Alert]] = relationship(
         "Alert",
-        back_populates="projects",
+        back_populates="project",
+    )
+    
+    project_ingestion_keys: Mapped[list[ProjectIngestionKey]] = relationship(
+        "ProjectIngestionKey",
+        back_populates="project",
+        cascade="all, delete-orphan",
     )
     
     def __str__(self) -> str:

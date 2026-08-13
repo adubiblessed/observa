@@ -1,0 +1,11 @@
+# OPEN
+#    ↓
+# ACTIVE
+#    ↓
+# SEALED
+#    ↓
+# COMPRESSED
+#    ↓
+# ARCHIVED
+#    ↓
+# DELETED

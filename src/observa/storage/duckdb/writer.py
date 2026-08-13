@@ -1,0 +1,9 @@
+# class DuckDBWriter:
+#     def write_logs(self, logs: list[LogRecord]) -> int:
+#         ...
+
+#     def write_metrics(self, metrics: list[MetricRecord]) -> int:
+#         ...
+
+#     def write_spans(self, spans: list[SpanRecord]) -> int:
+#         ...

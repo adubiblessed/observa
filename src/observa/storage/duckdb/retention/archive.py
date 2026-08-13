@@ -1,0 +1,3 @@
+# class ChunkArchiver:
+#     def archive(self, chunk: Path):
+#         ... 

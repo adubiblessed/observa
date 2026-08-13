@@ -1,0 +1,3 @@
+class RetentionCleaner:
+    def delete_expired_chunks(self):
+        ...
