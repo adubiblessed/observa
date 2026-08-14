@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-on-background font-sans text-body-md;
+    margin: 0;
+  }
+
+  ::selection {
+    @apply bg-primary text-on-primary;
+  }
+}
+
+/* Thin, unobtrusive scrollbars for dense data surfaces */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: theme("colors.surface-container-high") transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: theme("colors.surface-container-high");
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: theme("colors.outline-variant");
+}
+
+@layer components {
+  /* Log viewer row interactions (see design.md: Log Viewer) */
+  .log-row:hover {
+    background-color: theme("colors.surface-container");
+  }
+  .log-row.selected {
+    background-color: theme("colors.surface-container-high");
+    border-left: 2px solid theme("colors.primary");
+  }
+
+  /* Shared 1px panel border utilities */
+  .border-ds {
+    border: 1px solid theme("colors.outline-variant");
+  }
+  .border-b-ds {
+    border-bottom: 1px solid theme("colors.outline-variant");
+  }
+  .border-t-ds {
+    border-top: 1px solid theme("colors.outline-variant");
+  }
+  .border-r-ds {
+    border-right: 1px solid theme("colors.outline-variant");
+  }
+  .border-l-ds {
+    border-left: 1px solid theme("colors.outline-variant");
+  }
+}
+
+/* Disable the blue focus ring only where a custom one replaces it */
+input:focus-visible,
+button:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: none;
+}
