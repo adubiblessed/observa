@@ -195,16 +195,37 @@ export function ProjectDetailPage() {
 
 function ThroughputChart() {
   const [series, setSeries] = useState<Array<{ name: string; color: string; points: Array<{ timestamp: string; value: number }> }>>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.listMetrics({ expr: "http_requests_total" }).then((data) => {
-      if (data[0]) {
-        setSeries([{ name: "throughput", color: "#adc6ff", points: data[0].points }]);
-      }
-    });
+    let cancelled = false;
+    api
+      .listMetrics({ expr: "http_requests_total" })
+      .then((data) => {
+        if (cancelled) return;
+        if (data && data[0] && Array.isArray(data[0].points)) {
+          setSeries([{ name: "throughput", color: "#adc6ff", points: data[0].points }]);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  if (series.length === 0) return <Loader />;
+  if (loading) return <Loader label="Loading throughput…" />;
+  if (series.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center font-code-sm text-body-sm text-on-surface-variant">
+        No throughput telemetry available
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="mb-1 flex items-baseline gap-3 font-code-sm text-on-surface-variant">

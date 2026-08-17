@@ -2,6 +2,7 @@ import { Link, NavLink } from "react-router-dom";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
+import { Logo } from "@/components/ui/Logo";
 import { NAV_GROUPS, WORKSPACE_LABEL } from "@/lib/navigation";
 
 interface SidebarProps {
@@ -27,16 +28,14 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
       >
         {/* Brand */}
         <div className="flex items-center gap-3 border-b border-outline-variant px-4 py-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary-container text-headline-md font-bold text-on-primary-container">
-            O
-          </div>
+          <Logo variant="rounded" size="md" />
           <div className="min-w-0">
             <h1 className="truncate text-headline-md text-on-surface">Observa</h1>
             <p className="truncate text-body-sm text-on-surface-variant">{WORKSPACE_LABEL}</p>
           </div>
         </div>
 
-        {/* CTA */}
+        {/* CTA
         <div className="px-4 py-3">
           <Button
             variant="primary"
@@ -50,10 +49,10 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           >
             New Dashboard
           </Button>
-        </div>
+        </div> */}
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-2 pb-2">
+        <nav className="flex-1 overflow-y-auto px-2 py-8 pb-2">
           {NAV_GROUPS.map((group) => (
             <div key={group.label ?? "primary"} className="mb-1">
               {group.label ? (

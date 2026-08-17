@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/Icon";
+import { Logo } from "@/components/ui/Logo";
 
 const NAV_LINKS = ["Product", "Solutions", "Docs", "OpenTelemetry", "Pricing"];
 
@@ -45,10 +46,8 @@ export function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-on-surface">
       <header className="flex h-16 items-center justify-between px-6 lg:px-10">
-        <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded bg-primary-container text-[14px] font-bold text-on-primary-container">
-            O
-          </span>
+        <div className="flex items-center gap-3">
+          <Logo variant="rounded" size="md" />
           <span className="text-headline-sm font-semibold tracking-tight">Observa</span>
         </div>
         <nav className="hidden items-center gap-6 text-body-sm text-on-surface-variant md:flex">

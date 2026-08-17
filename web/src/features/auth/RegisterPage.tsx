@@ -1,16 +1,15 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Logo } from "@/components/ui/Logo";
 
 export function RegisterPage() {
   const navigate = useNavigate();
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm">
-        <div className="mb-8 flex items-center justify-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded bg-primary-container text-[16px] font-bold text-on-primary-container">
-            O
-          </span>
+        <div className="mb-8 flex items-center justify-center gap-3">
+          <Logo variant="rounded" size="lg" />
           <span className="text-headline-md font-semibold tracking-tight text-on-surface">Observa</span>
         </div>
 

@@ -2,6 +2,7 @@ import { Outlet, useLocation, useParams } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar, type Crumb } from "@/components/layout/Topbar";
 import { CommandPalette } from "@/components/feedback/CommandPalette";
+import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
 import { useCommandPalette } from "@/hooks/use-shortcut";
 import { useDisclosure } from "@/hooks/use-disclosure";
 
@@ -76,7 +77,12 @@ export function AppLayout() {
           onOpenMobileMenu={mobileMenu.open}
         />
         <main className="min-h-0 flex-1 overflow-y-auto bg-background">
-          <Outlet />
+          <ErrorBoundary
+            fallbackTitle="Dashboard view encountered an error"
+            fallbackDescription="This view failed to render. The navigation and other application views remain fully functional."
+          >
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
       <CommandPalette open={palette.isOpen} onClose={palette.close} />

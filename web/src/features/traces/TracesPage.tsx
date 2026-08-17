@@ -25,11 +25,18 @@ export function TracesPage() {
 
   useEffect(() => {
     let cancelled = false;
-    api.listTraces().then((result) => {
-      if (cancelled) return;
-      setTraces(result.items);
-      setLoading(false);
-    });
+    api
+      .listTraces()
+      .then((result) => {
+        if (cancelled) return;
+        setTraces(result?.items || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setTraces([]);
+        setLoading(false);
+      });
     return () => {
       cancelled = true;
     };

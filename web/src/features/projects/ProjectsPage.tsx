@@ -106,11 +106,18 @@ export function ProjectsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    api.listProjects().then((result) => {
-      if (cancelled) return;
-      setProjects(result.items);
-      setLoading(false);
-    });
+    api
+      .listProjects()
+      .then((result) => {
+        if (cancelled) return;
+        setProjects(result?.items || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setProjects([]);
+        setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -128,8 +135,6 @@ export function ProjectsPage() {
       }),
     [projects, view, status],
   );
-
-  if (loading) return <Loader label="Loading projects…" />;
 
   return (
     <div className="mx-auto flex h-full max-w-[1400px] flex-col gap-gutter p-container-padding">
@@ -187,17 +192,25 @@ export function ProjectsPage() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded border border-outline-variant bg-surface">
-        <DataTable
-          columns={columns}
-          rows={filtered}
-          rowKey={(p) => p.id}
-          zebra
-          onRowClick={(p) => navigate(`/app/projects/${p.id}`)}
-          rowClassName={() => "cursor-pointer"}
-        />
-        <div className="flex h-9 shrink-0 items-center border-t border-outline-variant bg-surface-container-lowest px-4 text-body-sm text-on-surface-variant">
-          Showing {filtered.length} of {projects.length} Projects
-        </div>
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center p-8">
+            <Loader label="Loading projects…" />
+          </div>
+        ) : (
+          <>
+            <DataTable
+              columns={columns}
+              rows={filtered}
+              rowKey={(p) => p.id}
+              zebra
+              onRowClick={(p) => navigate(`/app/projects/${p.id}`)}
+              rowClassName={() => "cursor-pointer"}
+            />
+            <div className="flex h-9 shrink-0 items-center border-t border-outline-variant bg-surface-container-lowest px-4 text-body-sm text-on-surface-variant">
+              Showing {filtered.length} of {projects.length} Projects
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

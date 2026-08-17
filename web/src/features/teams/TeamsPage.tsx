@@ -69,17 +69,22 @@ export function TeamsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    api.listTeams().then((result) => {
-      if (cancelled) return;
-      setTeams(result.items);
-      setLoading(false);
-    });
+    api
+      .listTeams()
+      .then((result) => {
+        if (cancelled) return;
+        setTeams(result?.items || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setTeams([]);
+        setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
   }, []);
-
-  if (loading) return <Loader label="Loading teams…" />;
 
   return (
     <div className="mx-auto flex h-full max-w-[1400px] flex-col gap-gutter p-container-padding">
@@ -104,17 +109,25 @@ export function TeamsPage() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded border border-outline-variant bg-surface">
-        <DataTable
-          columns={columns}
-          rows={teams}
-          rowKey={(t) => t.id}
-          zebra
-          onRowClick={(t) => navigate(`/app/teams/${t.id}`)}
-          rowClassName={() => "cursor-pointer"}
-        />
-        <div className="flex h-9 shrink-0 items-center border-t border-outline-variant bg-surface-container-lowest px-4 text-body-sm text-on-surface-variant">
-          Showing 1 to {teams.length} of {teams.length} entries
-        </div>
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center p-8">
+            <Loader label="Loading teams…" />
+          </div>
+        ) : (
+          <>
+            <DataTable
+              columns={columns}
+              rows={teams}
+              rowKey={(t) => t.id}
+              zebra
+              onRowClick={(t) => navigate(`/app/teams/${t.id}`)}
+              rowClassName={() => "cursor-pointer"}
+            />
+            <div className="flex h-9 shrink-0 items-center border-t border-outline-variant bg-surface-container-lowest px-4 text-body-sm text-on-surface-variant">
+              Showing 1 to {teams.length} of {teams.length} entries
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

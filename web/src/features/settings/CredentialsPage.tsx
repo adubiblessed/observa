@@ -96,11 +96,18 @@ export function CredentialsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    api.listCredentials().then((result) => {
-      if (cancelled) return;
-      setCredentials(result.items);
-      setLoading(false);
-    });
+    api
+      .listCredentials()
+      .then((result) => {
+        if (cancelled) return;
+        setCredentials(result?.items || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setCredentials([]);
+        setLoading(false);
+      });
     return () => {
       cancelled = true;
     };

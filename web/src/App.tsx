@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ToastProvider } from "@/components/feedback/Toast";
+import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
 import { AppLayout } from "@/layouts/AppLayout";
 import { LandingPage } from "@/features/landing/LandingPage";
 import { OverviewPage } from "@/features/overview/OverviewPage";
@@ -25,8 +26,9 @@ import { RegisterPage } from "@/features/auth/RegisterPage";
 
 export default function App() {
   return (
-    <ToastProvider>
-      <Routes>
+    <ErrorBoundary variant="full-screen">
+      <ToastProvider>
+        <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -55,5 +57,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ToastProvider>
+  </ErrorBoundary>
   );
 }

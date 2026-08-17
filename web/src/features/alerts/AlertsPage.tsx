@@ -144,12 +144,20 @@ export function AlertsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    api.listAlerts().then((data) => {
-      if (cancelled) return;
-      setIncidents(data.incidents);
-      setRules(data.rules);
-      setLoading(false);
-    });
+    api
+      .listAlerts()
+      .then((data) => {
+        if (cancelled) return;
+        setIncidents(data?.incidents || []);
+        setRules(data?.rules || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIncidents([]);
+        setRules([]);
+        setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
