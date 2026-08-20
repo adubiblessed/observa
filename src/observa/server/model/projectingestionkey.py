@@ -1,31 +1,39 @@
 from __future__ import annotations
 
 import enum
-import re
-import secrets
-from uuid import UUID
 from datetime import datetime
 from typing import Any
-
+from uuid import UUID
 
 from sqlalchemy import (
-    DateTime,
-    ForeignKey,
+    JSON,
     Integer,
     String,
     Uuid,
     UniqueConstraint,
-    JSON,
+    ForeignKey,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from observa.common.model.base import BaseModel
+from observa.common.model.base import BaseModel, UTCDateTime
+from observa.core.security import API_KEY_PREFIX_LENGTH, hash_api_key
 from observa.server.model.project import Project
 
-PROJECT_KEY_MAX_LENGTH = 32
 PROJECT_KEY_LABEL_MAX_LENGTH = 64
+API_KEY_HASH_LENGTH = 64  # sha256 hex
 
-_TOKEN_RE = re.compile(r"^[a-f0-9]{32}$")
+# Scope identifiers accepted on an ingestion key.  Adding a new scope here is
+# backwards compatible: existing keys simply won't carry it until reissued.
+SCOPE_LOGS_WRITE = "logs:write"
+SCOPE_METRICS_WRITE = "metrics:write"
+SCOPE_TRACES_WRITE = "traces:write"
+
+# Default scope set for a freshly issued ingestion key.
+DEFAULT_INGESTION_SCOPES = [
+    SCOPE_LOGS_WRITE,
+    SCOPE_METRICS_WRITE,
+    SCOPE_TRACES_WRITE,
+]
 
 
 class ProjectKeyStatus(enum.IntEnum):
@@ -39,25 +47,13 @@ class ProjectKeyUseCase(str, enum.Enum):
     TEMPEST = "tempest"
     DEMO = "demo"
 
-class ProjectKeyRole:
-    STORE = 1 << 0
-    API = 1 << 1
-
-    DEFAULT = STORE
-
 
 class ProjectIngestionKey(BaseModel):
+
     __tablename__ = "project_ingestion_keys"
 
     __table_args__ = (
-        UniqueConstraint(
-            "public_key",
-            name="uq_project_key_public_key",
-        ),
-        UniqueConstraint(
-            "secret_key",
-            name="uq_project_key_secret_key",
-        ),
+        UniqueConstraint("key_prefix", name="uq_project_key_prefix"),
     )
 
     project_id: Mapped[UUID] = mapped_column(
@@ -79,19 +75,20 @@ class ProjectIngestionKey(BaseModel):
         nullable=True,
     )
 
-    public_key: Mapped[str] = mapped_column(
-        String(PROJECT_KEY_MAX_LENGTH),
+    key_prefix: Mapped[str] = mapped_column(
+        String(API_KEY_PREFIX_LENGTH),
+        nullable=False,
+        index=True,
+    )
+
+    key_hash: Mapped[str] = mapped_column(
+        String(API_KEY_HASH_LENGTH),
         nullable=False,
     )
 
-    secret_key: Mapped[str] = mapped_column(
-        String(PROJECT_KEY_MAX_LENGTH),
-        nullable=False,
-    )
-
-    roles: Mapped[int] = mapped_column(
-        Integer,
-        default=ProjectKeyRole.DEFAULT,
+    scopes: Mapped[list[str]] = mapped_column(
+        JSON,
+        default=lambda: list(DEFAULT_INGESTION_SCOPES),
         nullable=False,
     )
 
@@ -112,8 +109,9 @@ class ProjectIngestionKey(BaseModel):
         nullable=True,
     )
 
-    #added this field for future usecase incase there is need to store user cudtom data using the dict field
-    data: Mapped[dict[str, Any]] = mapped_column( JSON, nullable=False, default=dict, )
+    data: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False, default=dict,
+    )
 
     use_case: Mapped[ProjectKeyUseCase] = mapped_column(
         String(32),
@@ -121,33 +119,29 @@ class ProjectIngestionKey(BaseModel):
         nullable=False,
     )
 
-    project: Mapped["Project"] = relationship(
-        back_populates="project_ingestion_keys",
-    )
-
     last_used_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
+        UTCDateTime,
         nullable=True,
     )
 
-    expired_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),    
+    expires_at: Mapped[datetime | None] = mapped_column(
+        UTCDateTime,
         nullable=True,
     )
 
     revoked_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
+        UTCDateTime,
         nullable=True,
     )
 
+    project: Mapped[Project] = relationship(
+        back_populates="project_ingestion_keys",
+    )
 
     @staticmethod
-    def generate_api_key() -> str:
-        return secrets.token_hex(16)
-
-    @staticmethod
-    def looks_like_api_key(key: str) -> bool:
-        return bool(_TOKEN_RE.fullmatch(key))
+    def hash_token(token: str) -> str:
+        """Hash a full token for storage/verification."""
+        return hash_api_key(token)
 
     @property
     def is_active(self) -> bool:
@@ -156,70 +150,22 @@ class ProjectIngestionKey(BaseModel):
     @property
     def rate_limit(self) -> tuple[int, int]:
         if self.rate_limit_count and self.rate_limit_window:
-            return (
-                self.rate_limit_count,
-                self.rate_limit_window,
-            )
-
+            return self.rate_limit_count, self.rate_limit_window
         return (0, 0)
 
-    def has_role(self, role: int) -> bool:
-        return bool(self.roles & role)
+    @property
+    def scope_set(self) -> frozenset[str]:
+        return frozenset(self.scopes or [])
 
-    def set_role(self, role: int, enabled: bool) -> None:
-        if enabled:
-            self.roles |= role
-        else:
-            self.roles &= ~role
-
-    def get_scopes(self) -> tuple[str, ...]:
-        return (
-            "project:read",
-            "project:write",
-            "project:admin",
-            "project:releases",
-            "event:read",
-            "event:write",
-            "event:admin",
-        )
+    def has_scope(self, scope: str) -> bool:
+        return scope in self.scope_set
 
     def get_audit_log_data(self) -> dict[str, Any]:
         return {
             "label": self.name,
-            "public_key": self.public_key,
-            "roles": self.roles,
+            "key_prefix": self.key_prefix,
+            "scopes": list(self.scopes or []),
             "status": self.status,
             "rate_limit_count": self.rate_limit_count,
             "rate_limit_window": self.rate_limit_window,
         }
-
-    def get_integration_endpoint(self, endpoint: str) -> str:
-        return (
-            f"{endpoint.rstrip('/')}"
-            f"/api/{self.project_id}/integration/"
-        )
-
-    def build_integration_endpoint(
-        self,
-        endpoint: str,
-        integration_name: str,
-        postfix: str = "",
-    ) -> str:
-        return (
-            f"{self.get_integration_endpoint(endpoint)}"
-            f"{integration_name}/{postfix}"
-        )
-
-    def get_otlp_traces_endpoint(self, endpoint: str) -> str:
-        return self.build_integration_endpoint(
-            endpoint,
-            "otlp",
-            "v1/traces",
-        )
-
-    def get_otlp_logs_endpoint(self, endpoint: str) -> str:
-        return self.build_integration_endpoint(
-            endpoint,
-            "otlp",
-            "v1/logs",
-        )

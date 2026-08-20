@@ -1,9 +1,0 @@
-# class DuckDBReader:
-#     def read_logs(...):
-#         ...
-
-#     def read_metrics(...):
-#         ...
-
-#     def read_spans(...):
-#         ...

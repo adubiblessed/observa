@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, Response, status
@@ -56,10 +57,7 @@ async def list_credentials(
         session=session,
     )
 
-    return [
-        schema.CredentialResponse.model_validate(cred)
-        for cred in credentials
-    ]
+    return [schema.CredentialResponse.model_validate(cred) for cred in credentials]
 
 
 @router.post(
@@ -75,7 +73,9 @@ async def create_credential_endpoint(
 ) -> schema.CredentialCreateResponse:
     """
     Create a new credential for a project.
-    Returns the generated secret_key in the response.
+
+    The returned ``token`` is the only time the secret is revealed; it is
+    hashed before storage and can never be retrieved again.
     """
     account_id = await get_current_account_id(
         current_user=current_user,
@@ -87,18 +87,19 @@ async def create_credential_endpoint(
         session=session,
     )
 
-    credential = await create_credential(
+    credential, token = await create_credential(
         project_id=project_id,
         account_id=account_id,
         name=payload.name,
         use_case=payload.use_case,
-        roles=payload.roles,
+        scopes=payload.scopes,
+        expires_at=payload.expires_at,
         rate_limit_count=payload.rate_limit_count,
         rate_limit_window=payload.rate_limit_window,
         session=session,
     )
 
-    return schema.CredentialCreateResponse.model_validate(credential)
+    return schema.CredentialCreateResponse.from_credential_and_token(credential, token)
 
 
 @router.get(
@@ -112,7 +113,7 @@ async def get_credential(
     session: AsyncSession = Depends(get_session),
 ) -> schema.CredentialResponse:
     """
-    Retrieve credential metadata. Does not expose secrets.
+    Retrieve credential metadata.  Does not expose secrets.
     """
     account_id = await get_current_account_id(
         current_user=current_user,
@@ -144,8 +145,8 @@ async def rotate_credential_endpoint(
     session: AsyncSession = Depends(get_session),
 ) -> schema.CredentialCreateResponse:
     """
-    Rotate a credential. Invalidates the old credential and creates a new active one.
-    Returns the new credential including its raw secret_key.
+    Rotate a credential.  Invalidates the old credential and creates a new
+    active one.  The returned ``token`` is shown once.
     """
     account_id = await get_current_account_id(
         current_user=current_user,
@@ -157,14 +158,14 @@ async def rotate_credential_endpoint(
         session=session,
     )
 
-    new_credential = await rotate_credential(
+    new_credential, token = await rotate_credential(
         project_id=project_id,
         credential_id=credential_id,
         account_id=account_id,
         session=session,
     )
 
-    return schema.CredentialCreateResponse.model_validate(new_credential)
+    return schema.CredentialCreateResponse.from_credential_and_token(new_credential, token)
 
 
 @router.post(

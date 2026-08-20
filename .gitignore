@@ -25,5 +25,6 @@ local_storage/
 
 # project meta
 Draft.md
+prompt.md
 draft.py
 Report_by_Ai.md

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import secrets
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -8,9 +8,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from observa.common.model.base import utc_now
+from observa.core.security import (
+    generate_api_key,
+    hash_api_key,
+    parse_api_key,
+    verify_api_key,
+)
 from observa.server.model.projectingestionkey import (
+    DEFAULT_INGESTION_SCOPES,
     ProjectIngestionKey,
-    ProjectKeyRole,
     ProjectKeyStatus,
     ProjectKeyUseCase,
 )
@@ -22,36 +28,41 @@ async def create_credential(
     account_id: UUID,
     name: str | None = None,
     use_case: str = "user",
-    roles: int = ProjectKeyRole.DEFAULT,
+    scopes: list[str] | None = None,
+    expires_at: datetime | None = None,
     rate_limit_count: int | None = None,
     rate_limit_window: int | None = None,
     session: AsyncSession,
-) -> ProjectIngestionKey:
+) -> tuple[ProjectIngestionKey, str]:
     """
-    Create a new ingestion API credential associated with a project.
-    """
+    Create a new project-scoped ingestion credential.
 
-    # Map use_case string to enum if valid
-    parsed_use_case = ProjectKeyUseCase.USER
+    Returns ``(credential, plaintext_token)``.  The plaintext token is the
+    only opportunity the caller has to see the secret; it is never stored
+    and can never be retrieved again.
+    """
+    token = generate_api_key()
+    parsed = parse_api_key(token)
+    if parsed is None:  # pragma: no cover - generated tokens are always valid
+        raise RuntimeError("Failed to generate a structurally valid API key")
+
     try:
         parsed_use_case = ProjectKeyUseCase(use_case)
     except ValueError:
-        pass
-
-    public_key = ProjectIngestionKey.generate_api_key()
-    secret_key = ProjectIngestionKey.generate_api_key()
+        parsed_use_case = ProjectKeyUseCase.USER
 
     credential = ProjectIngestionKey(
         project_id=project_id,
         created_by_account_id=account_id,
         name=name,
-        public_key=public_key,
-        secret_key=secret_key,
-        roles=roles,
+        key_prefix=parsed.prefix,
+        key_hash=hash_api_key(token),
+        scopes=scopes if scopes is not None else list(DEFAULT_INGESTION_SCOPES),
         status=ProjectKeyStatus.ACTIVE,
         use_case=parsed_use_case,
         rate_limit_count=rate_limit_count,
         rate_limit_window=rate_limit_window,
+        expires_at=expires_at,
         data={},
     )
 
@@ -64,7 +75,7 @@ async def create_credential(
         raise
 
     await session.refresh(credential)
-    return credential
+    return credential, token
 
 
 async def get_credentials(
@@ -72,9 +83,7 @@ async def get_credentials(
     project_id: UUID,
     session: AsyncSession,
 ) -> list[ProjectIngestionKey]:
-    """
-    Return all non-deleted credentials for a project.
-    """
+    """Return all non-deleted credentials for a project (metadata only)."""
 
     result = await session.execute(
         select(ProjectIngestionKey)
@@ -97,7 +106,9 @@ async def get_credential_by_id(
     """
     Retrieve a specific credential belonging to the specified project.
 
-    Raises HTTP 404 if credential does not exist or belongs to another project.
+    Raises HTTP 404 if the credential does not exist or belongs to another
+    project, so the existence of credentials in other projects is not
+    leaked.
     """
 
     result = await session.execute(
@@ -125,12 +136,13 @@ async def rotate_credential(
     credential_id: UUID,
     account_id: UUID,
     session: AsyncSession,
-) -> ProjectIngestionKey:
+) -> tuple[ProjectIngestionKey, str]:
     """
     Rotate an existing credential.
 
-    Invalidates (deactivates & revokes) the old credential and creates
-    a new active credential for the project atomically in one transaction.
+    Invalidates (revokes) the old credential and creates a new active
+    credential for the same project in one transaction.  Returns the new
+    credential and its one-time plaintext token.
     """
 
     old_credential = await get_credential_by_id(
@@ -139,39 +151,23 @@ async def rotate_credential(
         session=session,
     )
 
-    # Invalidate old credential
     now = utc_now()
     old_credential.status = ProjectKeyStatus.INACTIVE
     old_credential.revoked_at = now
 
-    # Generate new credential with copied attributes
-    new_public_key = ProjectIngestionKey.generate_api_key()
-    new_secret_key = ProjectIngestionKey.generate_api_key()
-
-    new_credential = ProjectIngestionKey(
+    new_credential, token = await create_credential(
         project_id=project_id,
-        created_by_account_id=account_id,
+        account_id=account_id,
         name=old_credential.name,
-        public_key=new_public_key,
-        secret_key=new_secret_key,
-        roles=old_credential.roles,
-        status=ProjectKeyStatus.ACTIVE,
-        use_case=old_credential.use_case,
+        use_case=old_credential.use_case.value,
+        scopes=list(old_credential.scopes or DEFAULT_INGESTION_SCOPES),
+        expires_at=old_credential.expires_at,
         rate_limit_count=old_credential.rate_limit_count,
         rate_limit_window=old_credential.rate_limit_window,
-        data=dict(old_credential.data or {}),
+        session=session,
     )
 
-    session.add(new_credential)
-
-    try:
-        await session.commit()
-    except Exception:
-        await session.rollback()
-        raise
-
-    await session.refresh(new_credential)
-    return new_credential
+    return new_credential, token
 
 
 async def revoke_credential(
@@ -182,7 +178,8 @@ async def revoke_credential(
 ) -> ProjectIngestionKey:
     """
     Revoke a credential, making it unusable for authentication.
-    Operation is idempotent.
+
+    Idempotent: revoking an already-revoked credential is a no-op.
     """
 
     credential = await get_credential_by_id(
@@ -213,9 +210,7 @@ async def delete_credential(
     credential_id: UUID,
     session: AsyncSession,
 ) -> None:
-    """
-    Soft-delete a credential.
-    """
+    """Soft-delete a credential (kept for auditability)."""
 
     credential = await get_credential_by_id(
         project_id=project_id,
@@ -235,28 +230,46 @@ async def delete_credential(
 
 async def verify_credential(
     *,
-    public_key: str,
-    secret_key: str,
+    token: str,
     session: AsyncSession,
 ) -> ProjectIngestionKey | None:
     """
-    Efficiently look up and verify an active credential by public key and secret key.
-    Uses constant-time comparison to prevent timing attacks.
+    Authenticate an API key token.
+
+    Looks the credential up by its public prefix, then verifies the secret
+    against the stored hash using a constant-time comparison.  Returns
+    ``None`` for unknown prefix, wrong secret, inactive/revoked/expired or
+    soft-deleted credentials so callers can produce a uniform 401.
     """
+
+    parsed = parse_api_key(token)
+    if parsed is None:
+        return None
 
     result = await session.execute(
         select(ProjectIngestionKey).where(
-            ProjectIngestionKey.public_key == public_key,
-            ProjectIngestionKey.status == ProjectKeyStatus.ACTIVE,
+            ProjectIngestionKey.key_prefix == parsed.prefix,
             ProjectIngestionKey.deleted_at.is_(None),
         )
     )
 
     credential = result.scalar_one_or_none()
     if credential is None:
+        # Equalize timing with a real hash comparison to avoid a timing
+        # oracle on whether a prefix exists.
+        ProjectIngestionKey.hash_token(token)
         return None
 
-    if not secrets.compare_digest(credential.secret_key, secret_key):
+    if not verify_api_key(token, credential.key_hash):
+        return None
+
+    if credential.status != ProjectKeyStatus.ACTIVE:
+        return None
+
+    if credential.revoked_at is not None:
+        return None
+
+    if credential.expires_at is not None and credential.expires_at <= utc_now():
         return None
 
     return credential

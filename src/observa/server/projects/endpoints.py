@@ -20,7 +20,7 @@ from observa.server.projects.services import (
 )
 
 
-router = APIRouter(tags=["project"])
+router = APIRouter()
 
 
 @router.get(
